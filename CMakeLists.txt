@@ -150,11 +150,21 @@ message( ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(cuda-cmake-NVTX PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 
+# message("finding nvtoolsext")
+# find_library(nvToolsExt_lib NAMES libnvToolsExt)
+# find_library(LIBNVTOOLSEXT libnvToolsExt.so PATHS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/)
 
-
+# message("nvToolsExt_lib ${nvToolsExt_lib} ${LIBNVTOOLSEXT}")
+# message("${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+# message("${CMAKE_CUDA_TOOLKIT_ROOT_DIR}/lib64/")
+# message("${CUDAToolkit_LIBRARY_DIR}")
+# message("${CUDA_nvToolsExt_LIBRARY}")
 
 # Define link libraries for the target
-target_link_libraries(cuda-cmake-NVTX  -lcurand)
+if(NVTX)
+    # nvtoolsext found by cmake, no need to search for it? https://cmake.org/cmake/help/latest/module/FindCUDAToolkit.html?highlight=cmake_cuda_#nvtoolsext but this requires 3.17?
+    target_link_libraries(cuda-cmake-NVTX nvToolsExt)
+endif(NVTX)
 
 # Remove SMS value from the cache so cmake .. will use default rather than last run
 unset(SMS CACHE)

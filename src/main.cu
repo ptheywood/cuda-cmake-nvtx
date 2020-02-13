@@ -22,20 +22,25 @@ static void HandleCUDAError(const char *file, int line, cudaError_t status = cud
 
 
 
-__global__ void pow2Kernel(const unsigned int N, unsigned int * in, unsigned int * out){
+__global__ void pow2Kernel(const unsigned int N, const unsigned int reps, unsigned int * in, unsigned int * out){
     unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if(idx < N){
-        out[idx] = in[idx] * in[idx];
+        for(unsigned int rep = 0; rep < reps; rep++){
+            out[idx] = in[idx] * in[idx];
+        }
     }
 }
 
-void pow2Host(const unsigned int N, unsigned int * in, unsigned int * out){
+void pow2Host(const unsigned int N, const unsigned int reps, unsigned int * in, unsigned int * out){
     for(unsigned int idx = 0; idx < N; idx++){
-        out[idx] = in[idx] * in[idx];
+        for(unsigned int rep = 0; rep < reps; rep++){
+            out[idx] = in[idx] * in[idx];
+        }
     }
 }
 
 unsigned int evaluate(const unsigned int N, unsigned int * a, unsigned int * b, const unsigned int print_count){
+    NVTX_RANGE("evaluate");
     unsigned int difference_count = 0;
     for(unsigned int idx = 0; idx < N; idx++){
         bool match = a[idx] == b[idx];
@@ -50,20 +55,14 @@ unsigned int evaluate(const unsigned int N, unsigned int * a, unsigned int * b, 
 }
 
 bool allocate(const unsigned int N, unsigned int ** h_in, unsigned int ** h_out, unsigned int ** d_in, unsigned int ** d_out, unsigned int ** h_d_out){
+    NVTX_RANGE("allocate");
     size_t size = N * sizeof(unsigned int);
+
     *h_in = (unsigned int*) malloc(size);
     *h_out = (unsigned int*) malloc(size);
-    memset(*h_in, 0, size);
-    memset(*h_out, 0, size);
-    
-    
     CUDA_CALL(cudaMalloc((void**)d_in, size));
     CUDA_CALL(cudaMalloc((void**)d_out, size));
-    CUDA_CALL(cudaMemset(*d_in, 0, size));
-    CUDA_CALL(cudaMemset(*d_out, 0, size));
-
     *h_d_out = (unsigned int*) malloc(size);
-    memset(*h_d_out, 0, size);
 
     bool success = true;
     if(*h_in == nullptr){
@@ -78,19 +77,32 @@ bool allocate(const unsigned int N, unsigned int ** h_in, unsigned int ** h_out,
     return success;
 }
 
-void initialse(const unsigned int N, unsigned int * h_in){
+void initialse(const unsigned int N, unsigned int * h_in, unsigned int * h_out, unsigned int * d_in, unsigned int * d_out, unsigned int * h_d_out){
     NVTX_RANGE("initialse");
+
+    size_t size = N * sizeof(unsigned int);
+
+    // Set memory values to 0
+    memset(h_in, 0, size);
+    memset(h_out, 0, size);
+    CUDA_CALL(cudaMemset(d_in, 0, size));
+    CUDA_CALL(cudaMemset(d_out, 0, size));
+    memset(h_d_out, 0, size);
+
+    // Initialise the host input.
     for(unsigned int idx = 0; idx < N; idx++){
         h_in[idx] = idx;
     }
 }
-void executeOnDevice(const unsigned int N, unsigned int * h_in, unsigned int * d_in, unsigned int * d_out, unsigned int * h_d_out){
+void executeOnDevice(const unsigned int N, const unsigned int reps, unsigned int * h_in, unsigned int * d_in, unsigned int * d_out, unsigned int * h_d_out){
     NVTX_RANGE("executeOnDevice");
+    const unsigned int kernel_reps = 32;
     size_t size = N * sizeof(unsigned int);
 
+    NVTX_PUSH("H2D");
     // Copy input to device
     CUDA_CALL(cudaMemcpy(d_in, h_in, size, cudaMemcpyHostToDevice));
-
+    NVTX_POP();
     // Launch kernel
     int blockSize = 0;
 	int minGridSize = 0;
@@ -98,18 +110,26 @@ void executeOnDevice(const unsigned int N, unsigned int * h_in, unsigned int * d
     CUDA_CALL(cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, pow2Kernel, 0, N));
     gridSize = (N + blockSize - 1) / blockSize;
 
-    pow2Kernel << <gridSize, blockSize >> >(N, d_in, d_out);
-
+    NVTX_PUSH("kerenel_reps");
+    for(unsigned int krep = 0; krep < kernel_reps; krep++){
+        NVTX_PUSH("pow2Kernel");
+        pow2Kernel << <gridSize, blockSize >> >(N, reps, d_in, d_out);
+        NVTX_POP();
+    }
     cudaDeviceSynchronize();
     CUDA_CHECK();
+    NVTX_POP();
 
     
     // Copy data from device to host.
+    NVTX_PUSH("D2H");
     CUDA_CALL(cudaMemcpy(h_d_out, d_out, size, cudaMemcpyDeviceToHost));
+    NVTX_POP();
 }
-void executeOnHost(const unsigned int N, unsigned int * h_in, unsigned int * h_out){
+
+void executeOnHost(const unsigned int N, const unsigned int reps, unsigned int * h_in, unsigned int * h_out){
     NVTX_RANGE("executeOnHost");
-    pow2Host(N, h_in, h_out);
+    pow2Host(N, reps, h_in, h_out);
 }
 
 void deallocate(unsigned int ** h_in, unsigned int ** h_out, unsigned int ** d_in, unsigned int ** d_out, unsigned int ** h_d_out){
@@ -133,7 +153,9 @@ bool arbitraryCUDAStuff(){
     NVTX_RANGE("arbitraryCUDAStuff");
 
     // Set problem size
-    const unsigned int N = 1024;
+    // const unsigned int N = 1024;
+    const unsigned int N = 65536;
+    const unsigned int reps = 32;
 
     // Declare pointers
     unsigned int * h_in = nullptr;
@@ -149,16 +171,16 @@ bool arbitraryCUDAStuff(){
     }
 
     // Initialise
-    initialse(N, h_in);
+    initialse(N, h_in, h_out, d_in, d_out, h_d_out);
     
     // Execute Device
-    executeOnDevice(N, h_in, d_in, d_out, h_d_out);
+    executeOnDevice(N, reps, h_in, d_in, d_out, h_d_out);
 
     // Execute host
-    executeOnHost(N, h_in, h_out);
+    executeOnHost(N, reps, h_in, h_out);
 
     // Evalute
-    const unsigned int print_count = 8;
+    const unsigned int print_count = 0;
     unsigned int error_count = evaluate(N, h_out, h_d_out, print_count);
     if(error_count != 0){
         printf("Incorrect: %u incorrect values\n", error_count);
@@ -172,6 +194,11 @@ bool arbitraryCUDAStuff(){
     return !error_count;
 }
 
+void cudaInit(){
+    NVTX_RANGE("cudaInit");
+    // Free the nullptr to initialise the cuda context.
+    CUDA_CALL(cudaFree(0));
+}
 
 int main(int argc, char * argv[]){
     // Print if NVTX is enabled or not.
@@ -180,6 +207,10 @@ int main(int argc, char * argv[]){
     // Explicit full main markers.
     NVTX_PUSH("main");
 
+    // Early initialise the cuda context to improve profiling clarity.
+    cudaInit();
+
+    // Run some stuff.
     bool success = arbitraryCUDAStuff();
 
     NVTX_POP();

@@ -27,6 +27,20 @@ make
 ## Running
 
 ```
+cd build/
 ./cuda-cmake-nvtx 
 ```
 
+### Caputring timeline with nvvp
+
+```
+cd build/
+nvprof -o timeline.nvvp -f ./cuda-cmake-NVTX 
+```
+
+### Capturing timeline with nsight
+
+```
+cd build
+nsys profile -o timeline -f ./cuda-cmake-NVTX 
+```
