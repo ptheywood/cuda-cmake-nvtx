@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "nvtx_util.cuh"
+#include "nvrtc_test.cuh"
 
 static void HandleCUDAError(const char *file, int line, cudaError_t status = cudaGetLastError()) {
 	if (status != cudaSuccess || (status = cudaGetLastError()) != cudaSuccess)
@@ -214,6 +215,9 @@ int main(int argc, char * argv[]){
     bool success = arbitraryCUDAStuff();
 
     NVTX_POP();
+
+    // Quickly test NVRTC works.
+    test_rtc();
 
     // Reset the device.
     cudaDeviceReset();

@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 #if defined(NVTX)
-    #include "nvToolsExt.h"
+    #include <nvToolsExt.h>
 #endif
 
 void printNVTXStatus(){
