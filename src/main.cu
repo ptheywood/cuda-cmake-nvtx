@@ -200,6 +200,14 @@ void cudaInit(){
     CUDA_CALL(cudaFree(0));
 }
 
+void printNVTXStatus(){
+    #if defined(NVTX)
+        printf("NVTX is ON\n");
+    #else 
+        printf("NVTX is OFF\n");
+    #endif
+}
+
 int main(int argc, char * argv[]){
     // Print if NVTX is enabled or not.
     printNVTXStatus();
