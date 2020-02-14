@@ -45,9 +45,7 @@ find_library(NVTX_LIBRARIES
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(NVTX DEFAULT_MSG NVTX_INCLUDE_DIRS NVTX_LIBRARIES)
 
-message("NVTX_LIBRARIES ${NVTX_LIBRARIES}")
-message("NVTX_INCLUDE_DIRS ${NVTX_INCLUDE_DIRS}")
-# If the package was found, add the library?
+# If the package was found, add the library
 if(NVTX_FOUND)
     add_library(nvtx INTERFACE)
     target_link_libraries(nvtx INTERFACE ${NVTX_LIBRARIES})
