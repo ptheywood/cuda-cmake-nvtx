@@ -17,7 +17,6 @@ option(NVTX "Enable NVTX markers for improved profiling (if aviailable)" OFF)
 
 
 
-
 # Set a default build type if not passed (https://blog.kitware.com/cmake-and-the-default-build-type/)
 set(default_build_type "Release")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)

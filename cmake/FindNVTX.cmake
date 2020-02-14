@@ -13,7 +13,10 @@
 #    NVTX_LIBRARIES
 
 # CMake Native CUDA support doesn't provide the raw directory, only include
-get_filename_component(CMAKE_CUDA_TOOLKIT_DIRECTORY ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} PATH)
+
+if(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+	get_filename_component(CMAKE_CUDA_TOOLKIT_DIRECTORY ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} PATH)
+endif()
 
 # Attempt to find nvToolsExt.h containing directory
 find_path(NVTX_INCLUDE_DIRS
@@ -22,6 +25,7 @@ find_path(NVTX_INCLUDE_DIRS
         nvtx3/nvToolsExt.h
     PATHS
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        ${CUDA_TOOLKIT_ROOT_DIR}
     PATH_SUFFIXES
 		include
 		include/nvtx3
@@ -35,6 +39,7 @@ find_library(NVTX_LIBRARIES
 		nvToolsExt32_1 
 	PATHS 
 		${NVTX_INCLUDE_DIRS}
+		${CUDA_TOOLKIT_ROOT_DIR}
 		${CMAKE_CUDA_TOOLKIT_DIRECTORY}
 	PATH_SUFFIXES
 		lib
@@ -43,7 +48,7 @@ find_library(NVTX_LIBRARIES
 		lib/x64
 )
 
-# Apply standad cmake find package rules / variables. I.e. QUIET, NVTX_FOUND etc.
+# Apply standard cmake find package rules / variables. I.e. QUIET, NVTX_FOUND etc.
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(NVTX DEFAULT_MSG NVTX_INCLUDE_DIRS NVTX_LIBRARIES)
 
@@ -52,8 +57,6 @@ if(NVTX_FOUND)
     add_library(nvtx INTERFACE)
     target_link_libraries(nvtx INTERFACE ${NVTX_LIBRARIES})
     target_include_directories(nvtx INTERFACE ${NVTX_INCLUDE_DIRS})
-    # get_filename_component(NVTX_INCLUDE_DIRS ${NVTX_INCLUDE_DIRS} REALPATH)
-    # get_filename_component(NVTX_LIBRARIES ${NVTX_LIBRARY} REALPATH)
 endif()
 
 # Set returned values as advanced?
