@@ -3,6 +3,9 @@
 # Set the minimum cmake version to that which supports cuda natively.
 cmake_minimum_required(VERSION VERSION 3.10 FATAL_ERROR)
 
+# look for modules to enabel find_nvtx
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake/ ${CMAKE_MODULE_PATH})
+
 # Name the project and set languages
 project(cuda-cmake-NVTX CUDA CXX)
 
@@ -114,8 +117,6 @@ set(CMAKE_CUDA_FLAGS_PROFILE "${CMAKE_CUDA_FLAGS_PROFILE} -DPROFILE -D_PROFILE")
 
 # All warnings for all modes.
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -Wall")
-# Enable relocatable device code
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -rdc=true")
 
 
 # Specify using C++11 standard
@@ -150,20 +151,19 @@ message( ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(cuda-cmake-NVTX PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 
-# message("finding nvtoolsext")
-# find_library(nvToolsExt_lib NAMES libnvToolsExt)
-# find_library(LIBNVTOOLSEXT libnvToolsExt.so PATHS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/)
-
-# message("nvToolsExt_lib ${nvToolsExt_lib} ${LIBNVTOOLSEXT}")
-# message("${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
-# message("${CMAKE_CUDA_TOOLKIT_ROOT_DIR}/lib64/")
-# message("${CUDAToolkit_LIBRARY_DIR}")
-# message("${CUDA_nvToolsExt_LIBRARY}")
-
 # Define link libraries for the target
 if(NVTX)
-    # nvtoolsext found by cmake, no need to search for it? https://cmake.org/cmake/help/latest/module/FindCUDAToolkit.html?highlight=cmake_cuda_#nvtoolsext but this requires 3.17?
-    target_link_libraries(cuda-cmake-NVTX nvToolsExt)
+    # Find the nvtx library using custom cmake module
+    find_package(NVTX QUIET)
+    # If found, apply 
+    if(NVTX_FOUND)        
+        target_include_directories(cuda-cmake-NVTX SYSTEM PRIVATE ${NVTX_INCLUDE_DIRS})
+        target_link_libraries(cuda-cmake-NVTX ${NVTX_LIBRARIES})
+    else()
+        # If not found, disable.
+        message("NVTX Not found, Setting NVTX=OFF")
+        SET(NVTX "OFF")
+    endif(NVTX_FOUND)
 endif(NVTX)
 
 # Remove SMS value from the cache so cmake .. will use default rather than last run
