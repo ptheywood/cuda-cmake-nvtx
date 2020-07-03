@@ -2,14 +2,22 @@
 /**
  * Utility class / namespace for handling of NVTX profiling markers/ranges, wrapped in macros to avoid performance impact if not enabled.
  * 
- * Macro `NVTX` must be defined to be enabled.
- * Use NVTX_ macros to use. 
+ * Macro `USE_NVTX` must be defined to be enabled.
+ * Use USE_NVTX_ macros to use. 
  */
 
+ #if defined(USE_NVTX)
+    // Include the appropriate header if enabled
+    #if USE_NVTX >= 3
+        #include "nvtx3/nvToolsExt.h"
+    #else
+        #include "nvToolsExt.h"
+    #endif
+#endif
+
+
 // If nvtx is enabled, include header, defined namespace / class and macros.
-#if defined(NVTX)
-    // Include the header if enabled
-    #include "nvToolsExt.h"
+#if defined(USE_NVTX)
 
     // Scope some things into a namespace
     namespace nvtx {

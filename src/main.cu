@@ -201,7 +201,7 @@ void cudaInit(){
 }
 
 void printNVTXStatus(){
-    #if defined(NVTX)
+    #if defined(USE_NVTX)
         printf("NVTX is ON\n");
     #else 
         printf("NVTX is OFF\n");
